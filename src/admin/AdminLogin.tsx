@@ -91,7 +91,7 @@ const AdminLogin: React.FC = () => {
 
           <div className="admin-input-group" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <ReCAPTCHA
-              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
+              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIbYItAAAAAO6JsXT6zrwMDswmHqDzXT_x7uAq"}
               onChange={(token) => {
                 setCaptchaToken(token);
                 if (token) setCaptchaError('');
