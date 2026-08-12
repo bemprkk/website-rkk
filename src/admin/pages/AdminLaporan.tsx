@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useContent } from '../../context/ContentContext';
+import type { KasTransaksi } from '../../types';
 import {
   BarChart2, Users, CheckCircle, Clock, TrendingUp, Award,
   Wallet, FileText, Activity, Printer
 } from 'lucide-react';
 
+const formatRupiah = (n: number) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+
 const AdminLaporan: React.FC = () => {
   const { content } = useContent();
   const { stats, proker = [], trainings = [], seminars = [], alumni = [] } = content as any;
+  const kasTransaksi: KasTransaksi[] = (content as any).kasTransaksi ?? [];
   const [activeTab, setActiveTab] = useState<'proker' | 'keuangan' | 'anggota' | 'kegiatan'>('proker');
 
   const prokerDone = proker.filter((p: any) => p.status === 'done').length;
@@ -18,6 +23,43 @@ const AdminLaporan: React.FC = () => {
 
   const totalKegiatan = trainings.length + seminars.length;
   const kegiatanDone = [...trainings, ...seminars].filter((k: any) => k.status === 'done').length;
+
+  // ── FILTER KEUANGAN ────────────────────────────────────────────────────
+  const [filterPeriode, setFilterPeriode] = useState<'semua' | 'minggu' | 'bulan' | 'tahun'>('semua');
+
+  const filteredKas = useMemo(() => {
+    if (filterPeriode === 'semua') return kasTransaksi;
+    const now = new Date();
+    return kasTransaksi.filter(t => {
+      const d = new Date(t.tanggal);
+      if (filterPeriode === 'tahun') return d.getFullYear() === now.getFullYear();
+      if (filterPeriode === 'bulan') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      if (filterPeriode === 'minggu') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        const endOfWeek = new Date(now);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        return d >= startOfWeek && d <= endOfWeek;
+      }
+      return true;
+    });
+  }, [kasTransaksi, filterPeriode]);
+
+  const totalMasuk = useMemo(() => filteredKas.filter(t => t.tipe === 'masuk').reduce((s, t) => s + Number(t.nominal), 0), [filteredKas]);
+  const totalKeluar = useMemo(() => filteredKas.filter(t => t.tipe === 'keluar').reduce((s, t) => s + Number(t.nominal), 0), [filteredKas]);
+  const saldo = totalMasuk - totalKeluar;
+
+  // Chart data: 7 bulan terakhir
+  const chartDataKas = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (6 - i), 1);
+      const label = d.toLocaleString('id-ID', { month: 'short' });
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const val = kasTransaksi.filter(t => t.tipe === 'masuk' && t.tanggal?.startsWith(key)).reduce((s, t) => s + Number(t.nominal), 0);
+      return { label, value: Math.round(val / 100000) };
+    });
+  }, [kasTransaksi]);
 
   const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -209,75 +251,84 @@ const AdminLaporan: React.FC = () => {
         {/* ── TAB: KEUANGAN ──────────────────────────── */}
         {activeTab === 'keuangan' && (
           <div style={{ display: 'grid', gap: '1.5rem' }}>
-            <div className="admin-grid-auto" style={{ gap: '1rem' }}>
-              {[
-                { label: 'Total Kas Masuk', value: 'Rp 12.500.000', pct: 100, color: '#10b981' },
-                { label: 'Total Kas Keluar', value: 'Rp 7.675.000', pct: 61, color: '#ef4444' },
-                { label: 'Saldo Aktif', value: 'Rp 4.825.000', pct: 39, color: '#3b82f6' },
-              ].map(k => (
-                <div key={k.label} style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-card-border)', borderRadius: '1rem', padding: '1.5rem' }}>
-                  <p style={{ color: 'var(--admin-text-muted)', margin: '0 0 0.4rem', fontSize: '0.8rem' }}>{k.label}</p>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: k.color, marginBottom: '0.75rem' }}>{k.value}</div>
-                  <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${k.pct}%`, background: k.color, borderRadius: '3px' }} />
+            {kasTransaksi.length === 0 ? (
+              <div style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-card-border)', borderRadius: '1rem', padding: '3rem', textAlign: 'center', color: 'var(--admin-text-muted)' }}>
+                <Wallet size={40} style={{ marginBottom: '1rem', opacity: 0.4 }} />
+                <p>Belum ada data kas. Tambahkan transaksi di menu <strong>Kas BEM</strong>.</p>
+              </div>
+            ) : (
+              <>
+                <div className="admin-grid-auto" style={{ gap: '1rem' }}>
+                  {[
+                    { label: 'Total Kas Masuk', value: formatRupiah(totalMasuk), pct: 100, color: '#10b981' },
+                    { label: 'Total Kas Keluar', value: formatRupiah(totalKeluar), pct: totalMasuk > 0 ? Math.round((totalKeluar / totalMasuk) * 100) : 0, color: '#ef4444' },
+                    { label: 'Saldo Aktif', value: formatRupiah(saldo), pct: totalMasuk > 0 ? Math.round((saldo / totalMasuk) * 100) : 0, color: saldo >= 0 ? '#3b82f6' : '#ef4444' },
+                  ].map(k => (
+                    <div key={k.label} style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-card-border)', borderRadius: '1rem', padding: '1.5rem' }}>
+                      <p style={{ color: 'var(--admin-text-muted)', margin: '0 0 0.4rem', fontSize: '0.8rem' }}>{k.label}</p>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: k.color, marginBottom: '0.75rem' }}>{k.value}</div>
+                      <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, k.pct))}%`, background: k.color, borderRadius: '3px' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Chart arus kas */}
+                <div style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-card-border)', borderRadius: '1rem', padding: '1.5rem' }}>
+                  <h3 style={{ margin: '0 0 1rem', color: 'var(--admin-text-main)', fontWeight: 700 }}>Arus Kas Masuk per Bulan</h3>
+                  <BarChart data={chartDataKas} colors={['#10b981']} />
+                  <p style={{ textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: '0.75rem', marginTop: '0.5rem' }}>Nominal dalam ×Rp 100.000</p>
+                </div>
+
+                {/* Tabel transaksi */}
+                <div style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-card-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+                  <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--admin-card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <h3 style={{ margin: 0, color: 'var(--admin-text-main)', fontWeight: 700 }}>Riwayat Transaksi</h3>
+                    <select 
+                      value={filterPeriode}
+                      onChange={(e) => setFilterPeriode(e.target.value as any)}
+                      style={{ padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid var(--admin-card-border)', background: 'var(--admin-input-bg)', color: 'var(--admin-text-main)', fontSize: '0.85rem' }}
+                    >
+                      <option value="semua">Semua Waktu</option>
+                      <option value="minggu">Minggu Ini</option>
+                      <option value="bulan">Bulan Ini</option>
+                      <option value="tahun">Tahun Ini</option>
+                    </select>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--admin-input-bg)', fontSize: '0.78rem', color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>
+                          {['Tanggal', 'Keterangan', 'Kategori', 'Tipe', 'Nominal'].map(h => <th key={h} style={{ padding: '0.75rem 1.25rem', textAlign: 'left', fontWeight: 600 }}>{h}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...filteredKas].sort((a, b) => b.tanggal.localeCompare(a.tanggal)).map((t, i) => (
+                          <tr key={t.id} style={{ borderTop: '1px solid var(--admin-card-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                            <td style={{ padding: '0.8rem 1.25rem', color: 'var(--admin-text-muted)', fontSize: '0.85rem' }}>
+                              {new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td style={{ padding: '0.8rem 1.25rem', color: 'var(--admin-text-main)' }}>{t.keterangan}</td>
+                            <td style={{ padding: '0.8rem 1.25rem' }}>
+                              <span style={{ padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600, background: 'rgba(139,92,246,.12)', color: '#8b5cf6' }}>{t.kategori}</span>
+                            </td>
+                            <td style={{ padding: '0.8rem 1.25rem' }}>
+                              <span style={{ padding: '0.2rem 0.7rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 700, background: t.tipe === 'masuk' ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)', color: t.tipe === 'masuk' ? '#10b981' : '#ef4444' }}>
+                                {t.tipe === 'masuk' ? '▲ Masuk' : '▼ Keluar'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.8rem 1.25rem', fontWeight: 700, color: t.tipe === 'masuk' ? '#10b981' : '#ef4444' }}>
+                              {formatRupiah(Number(t.nominal))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {/* Chart arus kas */}
-            <div style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-card-border)', borderRadius: '1rem', padding: '1.5rem' }}>
-              <h3 style={{ margin: '0 0 1rem', color: 'var(--admin-text-main)', fontWeight: 700 }}>Arus Kas Bulanan (Contoh)</h3>
-              <BarChart
-                data={[
-                  { label: 'Jan', value: 1200000 / 100000 },
-                  { label: 'Feb', value: 800000 / 100000 },
-                  { label: 'Mar', value: 2100000 / 100000 },
-                  { label: 'Apr', value: 1500000 / 100000 },
-                  { label: 'Mei', value: 3200000 / 100000 },
-                  { label: 'Jun', value: 1800000 / 100000 },
-                  { label: 'Jul', value: 1900000 / 100000 },
-                ]}
-                colors={['#10b981']}
-              />
-              <p style={{ textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: '0.75rem', marginTop: '0.5rem' }}>Nominal dalam ×Rp 100.000</p>
-            </div>
-
-            {/* Tabel transaksi */}
-            <div style={{ background: 'var(--admin-card-bg)', border: '1px solid var(--admin-card-border)', borderRadius: '1rem', overflow: 'hidden' }}>
-              <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--admin-card-border)' }}>
-                <h3 style={{ margin: 0, color: 'var(--admin-text-main)', fontWeight: 700 }}>Riwayat Transaksi</h3>
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--admin-input-bg)', fontSize: '0.78rem', color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>
-                      {['Tanggal', 'Keterangan', 'Tipe', 'Nominal'].map(h => <th key={h} style={{ padding: '0.75rem 1.25rem', textAlign: 'left', fontWeight: 600 }}>{h}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { tanggal: '01 Jul 2025', ket: 'Iuran Anggota Semester Ganjil', tipe: 'masuk', nominal: 'Rp 5.000.000' },
-                      { tanggal: '15 Jul 2025', ket: 'Pengeluaran Seminar K3 Nasional', tipe: 'keluar', nominal: 'Rp 2.500.000' },
-                      { tanggal: '20 Jul 2025', ket: 'Sponsor Kegiatan PPKK Cup', tipe: 'masuk', nominal: 'Rp 7.500.000' },
-                      { tanggal: '25 Jul 2025', ket: 'ATK & Perlengkapan Kantor', tipe: 'keluar', nominal: 'Rp 675.000' },
-                      { tanggal: '28 Jul 2025', ket: 'Pengeluaran Pelatihan APAR', tipe: 'keluar', nominal: 'Rp 4.500.000' },
-                    ].map((t, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid var(--admin-card-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                        <td style={{ padding: '0.8rem 1.25rem', color: 'var(--admin-text-muted)', fontSize: '0.85rem' }}>{t.tanggal}</td>
-                        <td style={{ padding: '0.8rem 1.25rem', color: 'var(--admin-text-main)' }}>{t.ket}</td>
-                        <td style={{ padding: '0.8rem 1.25rem' }}>
-                          <span style={{ padding: '0.2rem 0.7rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 700, background: t.tipe === 'masuk' ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)', color: t.tipe === 'masuk' ? '#10b981' : '#ef4444' }}>
-                            {t.tipe === 'masuk' ? '▲ Masuk' : '▼ Keluar'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.8rem 1.25rem', fontWeight: 700, color: t.tipe === 'masuk' ? '#10b981' : '#ef4444' }}>{t.nominal}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         )}
 
@@ -492,12 +543,17 @@ const AdminLaporan: React.FC = () => {
 
         {/* Keuangan */}
         <div style={{ margin: '1.5rem 0' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111', borderLeft: '4px solid #10b981', paddingLeft: '0.75rem', marginBottom: '0.75rem' }}>Ringkasan Keuangan</h2>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111', borderLeft: '4px solid #10b981', paddingLeft: '0.75rem', marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            Ringkasan Keuangan
+            <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 400 }}>
+              Periode: {filterPeriode === 'minggu' ? 'Minggu Ini' : filterPeriode === 'bulan' ? 'Bulan Ini' : filterPeriode === 'tahun' ? 'Tahun Ini' : 'Semua Waktu'}
+            </span>
+          </h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
             {[
-              { label: 'Kas Masuk', value: 'Rp 12.500.000', color: '#10b981' },
-              { label: 'Kas Keluar', value: 'Rp 7.675.000', color: '#ef4444' },
-              { label: 'Saldo Aktif', value: 'Rp 4.825.000', color: '#3b82f6' },
+              { label: 'Kas Masuk', value: formatRupiah(totalMasuk), color: '#10b981' },
+              { label: 'Kas Keluar', value: formatRupiah(totalKeluar), color: '#ef4444' },
+              { label: 'Saldo Aktif', value: formatRupiah(saldo), color: '#3b82f6' },
             ].map(k => (
               <div key={k.label} style={{ border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem', textAlign: 'center' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 800, color: k.color }}>{k.value}</div>
@@ -505,6 +561,37 @@ const AdminLaporan: React.FC = () => {
               </div>
             ))}
           </div>
+
+          {/* Cetak Tabel Keuangan (Print Only) */}
+          {filteredKas.length > 0 && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={{ background: '#f3f4f6' }}>
+                    {['No', 'Tanggal', 'Keterangan', 'Kategori', 'Masuk', 'Keluar'].map(h => <th key={h} style={{ padding: '0.6rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 700 }}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...filteredKas].sort((a, b) => a.tanggal.localeCompare(b.tanggal)).map((t, i) => (
+                    <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                      <td style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid #e5e7eb', color: '#6b7280' }}>{i + 1}</td>
+                      <td style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
+                      <td style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>{t.keterangan}</td>
+                      <td style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>{t.kategori}</td>
+                      <td style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid #e5e7eb', color: '#10b981', fontWeight: 600 }}>{t.tipe === 'masuk' ? formatRupiah(Number(t.nominal)) : '-'}</td>
+                      <td style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid #e5e7eb', color: '#ef4444', fontWeight: 600 }}>{t.tipe === 'keluar' ? formatRupiah(Number(t.nominal)) : '-'}</td>
+                    </tr>
+                  ))}
+                  {/* Row Total */}
+                  <tr style={{ background: '#f3f4f6', fontWeight: 700 }}>
+                    <td colSpan={4} style={{ padding: '0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>TOTAL KESELURUHAN</td>
+                    <td style={{ padding: '0.75rem', color: '#10b981', borderTop: '2px solid #e5e7eb' }}>{formatRupiah(totalMasuk)}</td>
+                    <td style={{ padding: '0.75rem', color: '#ef4444', borderTop: '2px solid #e5e7eb' }}>{formatRupiah(totalKeluar)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

@@ -947,5 +947,6 @@ export const staticContent: WebsiteContent = {
     { id: 'al-6', name: 'Anisa Rahmat', tahun: '2024', kuliah: 'Universitas Diponegoro', kerja: 'Dinas Pemadam Kebakaran — Investigator', foto: 'https://i.pravatar.cc/150?img=45' },
     { id: 'al-7', name: 'Hendra Gunawan', tahun: '2024', kuliah: 'Universitas Hasanuddin', kerja: 'PT PLN — HSE Supervisor', foto: 'https://i.pravatar.cc/150?img=7' },
     { id: 'al-8', name: 'Sari Dewi', tahun: '2024', kuliah: 'Institut Teknologi Sepuluh Nopember', kerja: 'PT Shell Indonesia — Process Safety', foto: 'https://i.pravatar.cc/150?img=46' }
-  ]
+  ],
+  kasTransaksi: [],
 };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -23,6 +23,15 @@ const AppInner = () => {
   
   const isAdminDomain = window.location.hostname.includes('admin');
   const isAdminPath = location.pathname.startsWith('/admin');
+
+  useEffect(() => {
+    // Catat pengunjung hanya jika bukan di mode admin
+    if (!isAdminDomain && !isAdminPath) {
+      import('./api/axios').then(({ default: api }) => {
+        api.post('/content/visit').catch(() => {});
+      });
+    }
+  }, [isAdminDomain, isAdminPath]);
 
   // Redirect root to /admin if accessing via dedicated admin domain
   if (isAdminDomain && location.pathname === '/') {

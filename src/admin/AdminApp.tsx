@@ -10,6 +10,8 @@ import AdminBerita from './pages/AdminBerita';
 import AdminPengaturan from './pages/AdminPengaturan';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLaporan from './pages/AdminLaporan';
+import AdminKas from './pages/AdminKas';
+import AdminBackup from './pages/AdminBackup';
 
 const AdminApp: React.FC = () => {
   const { isLoggedIn } = useAdmin();
@@ -32,6 +34,8 @@ const AdminApp: React.FC = () => {
         <Route path="/berita" element={<AdminBerita />} />
         <Route path="/pengaturan" element={<AdminPengaturan />} />
         <Route path="/laporan" element={<AdminLaporan />} />
+        <Route path="/kas" element={<AdminKas />} />
+        <Route path="/backup" element={<AdminBackup />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </AdminLayout>

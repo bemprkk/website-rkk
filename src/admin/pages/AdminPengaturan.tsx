@@ -177,37 +177,6 @@ const AdminPengaturan: React.FC = () => {
             </div>
           </div>
 
-          {/* Section: Backup & Restore */}
-          <div style={{ background: 'var(--admin-card-bg)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--admin-card-border)' }}>
-            <h2 style={{ fontSize: '1.25rem', marginTop: 0, marginBottom: '1.5rem', color: 'var(--admin-text-main)', borderBottom: '1px solid #4b5563', paddingBottom: '0.5rem' }}>Backup & Restore Data</h2>
-            <p style={{ color: 'var(--admin-text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Simpan seluruh pengaturan, foto, dan konten ke file JSON, atau restore dari file sebelumnya.</p>
-            
-            <div className="admin-flex-actions">
-              <button onClick={handleExport} style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '0.75rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600 }}>
-                <Download size={18} /> Export JSON
-              </button>
-              
-              <label style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '0.75rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600 }}>
-                <Upload size={18} /> Import JSON
-                <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
-              </label>
-            </div>
-
-            <div style={{ marginTop: '2rem', borderTop: '1px dashed #4b5563', paddingTop: '1.5rem' }}>
-              <button 
-                onClick={() => {
-                  if (window.confirm('PERINGATAN: Semua perubahan akan hilang dan kembali ke data bawaan (statis). Yakin?')) {
-                    resetToDefault();
-                    window.location.reload();
-                  }
-                }}
-                style={{ width: '100%', display: 'flex', justifyContent: 'center', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.75rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600 }}
-              >
-                Reset ke Data Awal (Factory Reset)
-              </button>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>

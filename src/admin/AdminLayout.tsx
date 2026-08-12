@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  Menu, X, LayoutDashboard, User, Home, Info, Calendar, Settings, RefreshCw, Sun, Moon, Save, FileText, LogOut, Image, Briefcase, Shield, Mic, Handshake
+  Menu, X, LayoutDashboard, User, Home, Info, Calendar, Settings, RefreshCw, Sun, Moon, Save, FileText, LogOut, Image, Briefcase, Shield, Mic, Handshake, Wallet
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useAdmin } from '../context/AdminContext';
+import { useContent } from '../context/ContentContext';
 import './admin.css';
 
 interface MenuItem {
@@ -21,6 +22,7 @@ interface MenuSection {
 
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { logout } = useAdmin();
+  const { content, updateContent } = useContent();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false); // Desktop sidebar
@@ -52,13 +54,19 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     window.location.reload();
   };
 
-  const handleSyncLive = () => {
+  const handleSyncLive = async () => {
     setIsSyncing(true);
-    setTimeout(() => {
-      setIsSyncing(false);
+    setSyncSuccess(false);
+    try {
+      // Simpan state content saat ini ke backend secara eksplisit
+      await updateContent((prev) => prev);
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 3000);
-    }, 1000);
+    } catch (e) {
+      alert('Gagal sync ke server. Cek koneksi backend.');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   useEffect(() => {
@@ -116,6 +124,13 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       title: 'PENGATURAN',
       items: [
         { path: '/admin/pengaturan', icon: Settings, label: 'Pengaturan Website' },
+        { path: '/admin/backup', icon: Save, label: 'Backup & Storage' },
+      ]
+    },
+    {
+      title: 'KEUANGAN',
+      items: [
+        { path: '/admin/kas', icon: Wallet, label: 'Kas BEM' },
       ]
     },
     {

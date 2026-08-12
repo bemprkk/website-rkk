@@ -168,6 +168,16 @@ export interface AlumniItem {
   foto?: string;
 }
 
+// ─── Kas Transaksi ────────────────────────────────────────────────────────────
+export interface KasTransaksi {
+  id: string;          // unik (gunakan Date.now().toString() atau crypto.randomUUID)
+  tanggal: string;     // format 'YYYY-MM-DD'
+  keterangan: string;  // deskripsi transaksi
+  tipe: 'masuk' | 'keluar';
+  nominal: number;     // nilai dalam rupiah (integer)
+  kategori: string;   // misal: 'Iuran', 'Sponsor', 'ATK', 'Konsumsi', dll.
+}
+
 export interface TranslationSet {
   nav: {
     home: string;
@@ -369,4 +379,6 @@ export interface WebsiteContent {
   awards: AwardItem[];
   announcements: AnnouncementItem[];
   alumni: AlumniItem[];
+  kasTransaksi: KasTransaksi[];
+  visitorCount?: number;
 }
