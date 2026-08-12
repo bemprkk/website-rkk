@@ -2,8 +2,6 @@ import React, { createContext, useContext, useState } from 'react';
 import api from '../api/axios';
 
 const AUTH_KEY = 'bemprkk_admin_auth';
-const PASSWORD_KEY = 'bemprkk_admin_password';
-const DEFAULT_PASSWORD = 'AdminBemprkk.123';
 
 interface AdminContextType {
   isLoggedIn: boolean;
@@ -18,8 +16,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return sessionStorage.getItem(AUTH_KEY) === 'true';
   });
-
-  const getPassword = () => localStorage.getItem(PASSWORD_KEY) || DEFAULT_PASSWORD;
 
   const login = async (email: string, password: string, captchaToken: string | null) => {
     try {

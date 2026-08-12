@@ -3,7 +3,6 @@ import type { WebsiteContent } from '../types';
 import { staticContent } from '../data/staticContent';
 import api from '../api/axios';
 
-const STORAGE_KEY = 'bemprkk_content_v1';
 
 interface ContentContextType {
   content: WebsiteContent;
