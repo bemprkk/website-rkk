@@ -20,12 +20,20 @@ import './pages/pages.css';
 const AppInner = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith('/admin');
+  
+  const isAdminDomain = window.location.hostname.includes('admin');
+  const isAdminPath = location.pathname.startsWith('/admin');
 
-  if (isAdmin) {
+  // Redirect root to /admin if accessing via dedicated admin domain
+  if (isAdminDomain && location.pathname === '/') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  if (isAdminDomain || isAdminPath) {
     return (
       <Routes>
         <Route path="/admin/*" element={<AdminApp />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     );
   }
